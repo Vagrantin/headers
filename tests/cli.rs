@@ -8,6 +8,7 @@ use std::{
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
+type MyResult<T> = Result<T, Box<dyn Error>>;
 
 const PRG: &str = "header";
 const EMPTY: &str = "./tests/inputs/empty.txt";
@@ -24,7 +25,14 @@ fn random_string() -> String {
         .map(char::from)
         .collect()
 }
+// --------------------------------------------------
+fn parse_positive_int(val: &str) -> MyResult<usize> {
+    match val.parse::<usize>() {
+        Ok(n) if n > 0 => Ok(n),
+        _ => Err(From::from(val))
+    }
 
+}
 // --------------------------------------------------
 fn gen_bad_file() -> String {
     loop {
@@ -33,6 +41,24 @@ fn gen_bad_file() -> String {
             return filename;
         }
     }
+}
+// --------------------------------------------------
+#[test]
+fn test_parse_positive_int() {
+    //3 is an OK integer
+    let res = parse_positive_int("3");
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap(), 3);
+
+    // A zero is an error
+    let res = parse_positive_int("0");
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().to_string(), "0".to_string());
+
+    //Any string is an error
+    let res = parse_positive_int("foo");
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().to_string(), "foo".to_string());
 }
 
 // --------------------------------------------------
@@ -83,6 +109,9 @@ fn dies_bytes_and_lines() -> TestResult {
 fn skips_bad_file() -> TestResult {
     let bad = gen_bad_file();
     let expected = format!("{}: .* [(]os error 2[)]", bad);
+    println!("------ this is the expected output");
+    println!("{}",expected);
+    println!("------ this is the expected output");
     Command::cargo_bin(PRG)?
         .args([EMPTY, &bad, ONE])
         .assert()
