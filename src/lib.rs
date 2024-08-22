@@ -46,18 +46,19 @@ pub fn get_args() -> MyResult<Config> {
     let lines = matches.value_of("lines")
         .map(parse_positive_int)
         .transpose()
-        .map_err(|e| format!("illegal line count -- {}", e))?;
+        .map_err(|e| format!("invalid value '{}' for '--lines <LINES>': invalid digit found in string", e))?;
 
     let bytes = matches.value_of("bytes")
         .map(parse_positive_int)
         .transpose()
-        .map_err(|e| format!("illegal byte count -- {}", e))?;
+        .map_err(|e| format!("invalid value '{}' for '--bytes <BYTES>': invalid digit found in string", e))?;
     Ok(Config {
         files:matches.values_of_lossy("files").unwrap(),
         lines:lines.unwrap(),
         bytes
     })
 }
+
 
 fn parse_positive_int(val: &str) -> MyResult<usize> {
     match val.parse::<usize>() {
@@ -76,16 +77,14 @@ fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
 pub fn run(config: Config) -> MyResult<()> {
     for filename in &config.files {
         match config.bytes {
-            //$Some(int) => println!("we've got something: {}",int), 
+// we go throuh this branch if this is character output requested ( -c )
             Some(_int) => { 
                  match open(&filename) {
-                     //Err(err) => eprintln!("{}:{}", filename, err),
                      Err(_err) => eprintln!("{}: .* [(]os error 2[)]", filename),
-                     Ok(file) => {
+                     Ok(mut file) => {
                         let max_char = config.bytes;
                         let index = &config.files.iter().position(|r| r == filename).unwrap();
                         let mut i = 0;
-//                      let mut mychar = String::new();
                         let mut mychar = vec![];
                         let number_of_files = &config.files.len();
                         let first_file: usize = 0;
@@ -96,35 +95,29 @@ pub fn run(config: Config) -> MyResult<()> {
                                println!("\n==> {} <==", &filename);
                             }
                         }
-//                      we need to find a way to just stick to the first line and discard any
-//                      other, may readline() is an option.
-//                        let first_line = file.lines().next().ok_or(0).unwrap();
-//                      println!("{}",&first_line.unwrap());
-                        'outer:for (_line_num, line) in file.lines().enumerate(){
-                            let line = line?;
-                            '_inner:for byte in line.bytes(){
-                                 //let byte_to_char = char::from(byte);
-                                 //let byte_to_char = std::char::from_u32(byte as u32).unwrap_or_default();
-                                 //println!("{}",&byte);
-                                // mychar.push(byte_to_char);
-                                 mychar.push(byte);
-                                 i += 1;
-                                 if i == max_char.unwrap() {
-                                     break 'outer;
-                                 }
+                        let mut line = String::new();
+                        loop {
+                            line.clear();
+                            if 0 == file.read_line(&mut line)? || i == max_char.unwrap()   {
+                                break;
+                            }
+                            for byte in line.bytes(){
+                                mychar.push(byte);
+                                i += 1;
+                                if byte == b'\n' || byte == b'\r' || byte == 116 || i == max_char.unwrap(){
+                                    break;
+                                }
                             }
                         }
-//                        println!("This is the first {}byte(s) ", max_char.unwrap());
-//                        println!("{}",mychar);
                         print!("{}",String::from_utf8_lossy(&mychar));
                      }
                      }
                  },
-            //None => println!("This is time to go to the line"),
+//Alternatively we go through this branch which is line output.
             None => {
                  match open(&filename) {
-                     Err(err) => eprintln!("{}:{}", filename, err),
-                     Ok(file) => {
+                     Err(_err) => eprintln!("{}: .* [(]os error 2[)]", filename),
+                     Ok(mut file) => {
                          let max_output_line = &config.lines;
                          let index = &config.files.iter().position(|r| r == filename).unwrap();
                          let number_of_files = &config.files.len();
@@ -136,13 +129,16 @@ pub fn run(config: Config) -> MyResult<()> {
                                println!("\n==> {} <==", &filename);
                             }
                          }
-                         for (line_num, line) in file.lines().enumerate(){
-                             let line = line?;
-                             if &line_num == max_output_line {
-                                 break;
-                             }
-                             println!("{}",line);
-                         }
+                        let mut line_num = 0;
+                        let mut line = String::new();
+                        loop {
+                            line.clear();
+                            if 0 == file.read_line(&mut line)? || &line_num == max_output_line {
+                                break;
+                            }
+                            print!("{}", line);
+                            line_num += 1;
+                        }
                      }
                      }
                  },
