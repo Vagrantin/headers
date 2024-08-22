@@ -38,7 +38,7 @@ fn dies_bad_bytes() -> Result<()> {
     let bad = random_string();
     let expected = format!(
         "invalid value '{bad}' for \
-        '--bytes <BYTES>': invalid digit found in string\n"
+        '--bytes <BYTES>': invalid digit found in string"
     );
 
     Command::cargo_bin(PRG)?
@@ -55,7 +55,7 @@ fn dies_bad_bytes() -> Result<()> {
 fn dies_bad_lines() -> Result<()> {
     let bad = random_string();
     let expected = format!(
-        "invalid value '{bad}' for \
+        "error: invalid value '{bad}' for \
         '--lines <LINES>': invalid digit found in string"
     );
     Command::cargo_bin(PRG)?
@@ -86,7 +86,6 @@ fn dies_bytes_and_lines() -> Result<()> {
 fn skips_bad_file() -> Result<()> {
     let bad = gen_bad_file();
     let expected = format!("{bad}: .* [(]os error 2[)]");
-    println!("{}", expected);
     Command::cargo_bin(PRG)?
         .args([EMPTY, &bad, ONE])
         .assert()

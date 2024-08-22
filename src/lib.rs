@@ -46,7 +46,7 @@ pub fn get_args() -> MyResult<Config> {
     let lines = matches.value_of("lines")
         .map(parse_positive_int)
         .transpose()
-        .map_err(|e| format!("invalid value '{}' for '--lines <LINES>': invalid digit found in string", e))?;
+        .map_err(|e| format!("error: invalid value '{}' for '--lines <LINES>': invalid digit found in string", e))?;
 
     let bytes = matches.value_of("bytes")
         .map(parse_positive_int)
